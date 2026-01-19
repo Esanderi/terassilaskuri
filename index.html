@@ -2,19 +2,17 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Terassilaskuri Master Pro</title>
+    <title>Terassilaskuri Pro (m)</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
         .container { max-width: 500px; width: 100%; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        h2 { margin-top: 0; color: #1a1a1a; }
         .input-group { margin-bottom: 15px; }
-        label { display: block; font-weight: 600; margin-bottom: 5px; color: #444; }
-        input, select, button { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 16px; }
-        button { background: #27ae60; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        button:hover { background: #219150; }
-        .result-card { margin-top: 25px; padding: 20px; background: #e8f5e9; border-radius: 10px; border-left: 6px solid #27ae60; display:none; }
-        .profit-box { margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 8px; border: 1px dashed #ff9800; font-size: 0.95em; }
-        .status { font-size: 0.8em; margin-bottom: 15px; color: #27ae60; font-weight: bold; }
+        label { display: block; font-weight: 600; margin-bottom: 5px; }
+        input, select, button { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+        button { background: #27ae60; color: white; border: none; font-size: 18px; cursor: pointer; font-weight: bold; }
+        .result-card { margin-top: 20px; padding: 20px; background: #e8f5e9; border-radius: 10px; border-left: 6px solid #27ae60; display:none; }
+        .profit-box { margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 8px; border: 1px dashed #ff9800; }
+        .status { font-size: 0.8em; margin-bottom: 10px; color: #666; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -29,45 +27,40 @@
     </div>
 
     <div class="input-group">
-        <label>Valitse materiaali / leveys:</label>
+        <label>Valitse materiaali/leveys:</label>
         <select id="matSelector" onchange="laske()"></select>
     </div>
 
     <button onclick="laske()">Laske Tarjous</button>
 
     <div id="result" class="result-card">
-        <h3 id="outTotal" style="margin:0; color: #1b5e20;"></h3>
-        <p id="outInfo" style="margin: 10px 0; color: #333;"></p>
-        
+        <h3 id="outTotal"></h3>
+        <p id="outInfo"></p>
         <div class="profit-box" id="outProfit"></div>
     </div>
 </div>
 
 <script>
-    // 1. LIITÄ TÄHÄN OMA GOOGLE SHEETS CSV-LINKKISI
-    const sheetsUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnibizIk4iKv52vSzCG-zOD_Ofb1i4_MO1JVeVpxpVfAcFIw-bgpOsNrzuFwk7SP4a6NNGngLqM2oS/pub?output=csv"; 
+    // VAIHDA TÄHÄN OMA GOOGLE SHEETS CSV-LINKKISI
+    const sheetsUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnibiziK4ikV5zszCG-zOD_Ofb1i4_MO1JVeVpxpVfAcFIw-bgpOsNrzuFwk7SP4a6NNGngLqM2oS/pub?output=csv"; 
 
     let hinnastoData = [];
 
-    // 2. LASKENTAFUNKTIO
     function laske() {
         const sqm = parseFloat(document.getElementById('sqm').value);
         const selector = document.getElementById('matSelector');
-        
-        // Varmistetaan että data on ladattu
         if (!sqm || sqm <= 0 || hinnastoData.length === 0) return;
         
         const mat = hinnastoData[selector.selectedIndex];
 
-        // Lasketaan menekki (laudan leveys mm + 5mm rako)
-        const lautaJaRakoMetreina = (mat.leveys + 5) / 1000;
-        const menekkiPerM2 = 1 / lautaJaRakoMetreina; 
+        // LASKENTA: Metri -> Neliö (sis. 5mm rako)
+        // Kaava: 1000 / (leveys + 5) = kuinka monta metriä lautaa menee neliöön
+        const menekkiPerM2 = 1000 / (mat.leveys + 5); 
         
-        // Muutetaan metrihinnat neliöhinnoiksi
+        // Lasketaan neliöhinnat metrihintojen perusteella
         const myyntiNeliohinta = mat.myyntiM * menekkiPerM2;
         const kuluNeliohinta = mat.kuluM * menekkiPerM2;
 
-        // Kokonaislaskelma
         const aloituskulu = 600; 
         const kokonaishinta = aloituskulu + (sqm * myyntiNeliohinta);
         const kokonaiskulut = sqm * kuluNeliohinta;
@@ -75,24 +68,19 @@
         
         const kokonaisMetrit = Math.round(sqm * menekkiPerM2);
 
-        // Näytetään tulokset
         document.getElementById('result').style.display = "block";
         document.getElementById('outTotal').innerText = "Tarjous: " + Math.round(kokonaishinta).toLocaleString('fi-FI') + " €";
         document.getElementById('outInfo').innerText = "Menekki: n. " + kokonaisMetrit + " m (" + mat.leveys + " mm lauta)";
         
-        document.getElementById('outProfit').innerHTML = 
-            "<strong>Yrittäjän näkymä:</strong><br>" +
+        document.getElementById('outProfit').innerHTML = "<strong>Yrittäjän näkymä:</strong><br>" + 
             "💰 Kate: " + Math.round(kate).toLocaleString('fi-FI') + " €<br>" +
             "📏 Menekki: " + Math.round(menekkiPerM2 * 10) / 10 + " m / m²";
     }
 
-    // 3. DATAN HAKU SHEETSISTÄ
-   // 3. DATAN HAKU SHEETSISTÄ (Fiksumpi versio)
     async function lataaSheetsista() {
         try {
             const response = await fetch(sheetsUrl);
             const csvText = await response.text();
-            // Pilkotaan rivit oikein, riippumatta siitä onko rivinvaihto \n vai \r\n
             const rivit = csvText.split(/\r?\n/).slice(1); 
             
             const selector = document.getElementById('matSelector');
@@ -100,44 +88,28 @@
             hinnastoData = []; 
 
             rivit.forEach(rivi => {
-                // TÄRKEÄÄ: Erotetaan sarakkeet, olipa välissä pilkku tai puolipiste
                 const s = rivi.split(/[;,]/);
-                
                 if(s.length >= 4) {
                     const nimi = s[0].trim();
-                    
-                    // Puhdistetaan numerot (poistetaan välilyönnit ja muutetaan pilkut pisteiksi)
-                    const puhdista = (teksti) => {
-                        if (!teksti) return 0;
-                        return parseFloat(teksti.replace(/[^0-9,.]/g, '').replace(',', '.'));
-                    };
-
-                    const hinta = puhdista(s[1]);
-                    const kulu = puhdista(s[2]);
-                    const leveys = puhdista(s[3]);
+                    const hinta = parseFloat(s[1].replace(',', '.'));
+                    const kulu = parseFloat(s[2].replace(',', '.'));
+                    const leveys = parseFloat(s[3].replace(',', '.'));
 
                     if(!isNaN(hinta) && hinta > 0) {
                         hinnastoData.push({ nimi, myyntiM: hinta, kuluM: kulu, leveys: leveys });
                         let opt = document.createElement('option');
-                        opt.value = nimi;
                         opt.text = nimi + " (" + leveys + "mm)";
                         selector.appendChild(opt);
                     }
                 }
             });
-            
-            if (hinnastoData.length > 0) {
-                document.getElementById('status').innerText = "✅ Hinnasto ladattu (" + hinnastoData.length + " tuotetta)";
-            } else {
-                document.getElementById('status').innerText = "⚠️ Sheets ladattiin, mutta tietoja ei löytynyt. Tarkista sarakkeet!";
-            }
+            document.getElementById('status').innerText = "✅ Hinnasto ladattu (" + hinnastoData.length + " tuotetta)";
         } catch (e) {
-            document.getElementById('status').innerText = "⚠️ Yhteysvirhe! Tarkista internet ja Sheets-linkki.";
+            document.getElementById('status').innerText = "⚠️ Virhe haussa. Tarkista linkki!";
         }
     }
+
     lataaSheetsista();
 </script>
-
 </body>
 </html>
-
