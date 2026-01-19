@@ -88,19 +88,36 @@
         const mat = hinnastoData[document.getElementById('matSelector').selectedIndex];
         if (!sqm || !mat) return;
 
-        // 1. Laske nykyhetken materiaalikulu
+        // 1. Laske nykyhetken materiaalikulu (esim. 1.5€/m -> n. 12€/m2)
         const menekkiM = 1000 / (mat.leveys + 5);
-        const matKuluYhteensa = sqm * menekkiM * mat.kulu;
+        const nykyinenMatKuluM2 = menekkiM * mat.kulu;
 
-        // 2. Laske historiallinen keskihinta (työ + kate)
-        // Etsitään historiasta samat materiaalit
-        const samatTyot = historiaData.filter(h => h.materiaali === mat.nimi);
-        let avgTyopalkkaM2 = 120; // Oletus jos historiaa ei ole
+        // 2. Laske historiallinen toteutunut neliöhinta
+        const samatTyot = historiaData.filter(h => h.materiaali === mat.nimi || mat.nimi.includes(h.materiaali));
+        
+        // Jos historiaa ei löydy, käytetään oletuksena 200€/m2 (perustuen aiempaan 15m2 = 3000€ kokemukseesi)
+        let historiallinenM2Hinta = 200; 
 
         if(samatTyot.length > 0) {
             const summat = samatTyot.map(h => h.hinta / h.koko);
-            avgTyopalkkaM2 = summat.reduce((a,b) => a+b) / summat.length;
+            historiallinenM2Hinta = summat.reduce((a,b) => a+b) / summat.length;
         }
+
+        // 3. ÄLYKÄS ENNUSTE:
+        // Otetaan historian mukainen hinta ja säädetään sitä materiaalikulujen muutoksella.
+        // Lisätään 600€ aloitus ja lasketaan loput neliöperusteisesti.
+        const tyonOsuusM2 = historiallinenM2Hinta - 40; // Oletetaan että vanha mat-kulu oli n. 40€/m2
+        const ennuste = 600 + (sqm * (tyonOsuusM2 + nykyinenMatKuluM2)); 
+
+        document.getElementById('result').style.display = "block";
+        document.getElementById('outTotal').innerText = "Älykäs Ennuste: " + Math.round(ennuste).toLocaleString('fi-FI') + " €";
+        document.getElementById('outInfo').innerText = "Analyysi: Perustuu " + samatTyot.length + " aiempaan urakkaan.";
+        
+        const kate = ennuste - (sqm * nykyinenMatKuluM2);
+        document.getElementById('outPrediction').innerHTML = "<strong>💡 Analyysi:</strong><br>" +
+            "Historiallinen taso: ~" + Math.round(historiallinenM2Hinta) + " €/m²<br>" +
+            "💰 Arvioitu kate (työ + voitto): " + Math.round(kate).toLocaleString('fi-FI') + " €";
+    }
 
         // 3. Yhdistetään: (Nykyinen materiaalikulu) + (Historiallinen työn osuus)
         // Lisätään vielä 600€ aloitusvarmistus
@@ -118,3 +135,4 @@
 </script>
 </body>
 </html>
+
