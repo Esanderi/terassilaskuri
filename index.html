@@ -2,36 +2,160 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI-Terassilaskuri Pro</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 550px; width: 100%; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; font-weight: 600; margin-bottom: 5px; }
-        input, select, button { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
-        button { background: #27ae60; color: white; border: none; font-size: 18px; cursor: pointer; font-weight: bold; }
-        .result-card { margin-top: 20px; padding: 20px; background: #e8f5e9; border-radius: 10px; border-left: 6px solid #27ae60; display:none; }
-        .prediction-box { margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; border: 1px solid #2196f3; font-size: 0.9em; }
-        .status { font-size: 0.8em; margin-bottom: 10px; color: #666; font-weight: bold; }
+        /* PERUSASETUKSET & TEEMAT */
+        :root {
+            --bg: #121212;
+            --card: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #2ecc71;
+            --input: #2c2c2c;
+            --border: #333;
+            --shadow: rgba(0,0,0,0.5);
+        }
+
+        .light-theme {
+            --bg: #f0f2f5;
+            --card: #ffffff;
+            --text: #1a1a1a;
+            --accent: #27ae60;
+            --input: #ffffff;
+            --border: #ddd;
+            --shadow: rgba(0,0,0,0.1);
+        }
+
+        body { 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            padding: 20px; 
+            display: flex; 
+            justify-content: center;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .container { 
+            max-width: 550px; 
+            width: 100%; 
+            background: var(--card); 
+            padding: 30px; 
+            border-radius: 20px; 
+            box-shadow: 0 15px 35px var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        /* TEEMANVAIHTO-NAPPI */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--input);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        h2 { 
+            margin-top: 0; 
+            color: var(--accent); 
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .status { 
+            font-size: 0.85em; 
+            margin-bottom: 20px; 
+            color: #888; 
+            text-align: center;
+            padding: 8px;
+            background: var(--input);
+            border-radius: 10px;
+        }
+
+        .input-group { margin-bottom: 20px; }
+        label { 
+            display: block; 
+            font-weight: 600; 
+            margin-bottom: 8px; 
+            color: var(--accent); 
+        }
+
+        input, select { 
+            width: 100%; 
+            padding: 14px; 
+            background: var(--input); 
+            border: 1px solid var(--border); 
+            border-radius: 10px; 
+            color: var(--text); 
+            font-size: 16px;
+            outline: none;
+        }
+
+        button.main-btn { 
+            width: 100%;
+            background: var(--accent); 
+            color: #fff; 
+            border: none; 
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 18px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            transition: transform 0.2s, opacity 0.8s;
+        }
+
+        button.main-btn:hover { opacity: 0.9; }
+
+        /* TULOSKORTTI */
+        .result-card { 
+            margin-top: 25px; 
+            padding: 20px; 
+            background: rgba(46, 204, 113, 0.1); 
+            border-radius: 15px; 
+            border-left: 5px solid var(--accent); 
+            display:none; 
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #outTotal { margin: 0; color: var(--accent); font-size: 24px; }
+        #outInfo { color: var(--text); margin: 10px 0; opacity: 0.8; }
+
+        .prediction-box { 
+            margin-top: 15px; 
+            padding: 15px; 
+            background: rgba(33, 150, 243, 0.1);
+            border-radius: 10px; 
+            border: 1px solid #2196f3; 
+            color: var(--text);
+            font-size: 0.9em; 
+            line-height: 1.6;
+        }
     </style>
 </head>
-<body>
-
-<div class="container">
-    <h2>🛠 Ennustava Terassilaskuri</h2>
+<body class="dark-theme"> <div class="container">
+    <button class="theme-toggle" onclick="toggleTheme()">☀️/🌙</button>
+    <h2>🛠 Älykäs Laskuri Pro</h2>
     <div id="status" class="status">Yhdistetään tietokantoihin...</div>
     
     <div class="input-group">
-        <label>Uuden terassin koko (m²):</label>
-        <input type="number" id="sqm" placeholder="Esim. 20" oninput="laske()">
+        <label>Uuden terassin koko (m²)</label>
+        <input type="number" id="sqm" placeholder="Esim. 15" oninput="laske()">
     </div>
 
     <div class="input-group">
-        <label>Valitse materiaali:</label>
+        <label>Valitse materiaali</label>
         <select id="matSelector" onchange="laske()"></select>
     </div>
 
-    <button onclick="laske()">Laske Älykäs Ennuste</button>
+    <button class="main-btn" onclick="laske()">Päivitä ennuste</button>
 
     <div id="result" class="result-card">
         <h3 id="outTotal"></h3>
@@ -41,98 +165,102 @@
 </div>
 
 <script>
+    // --- LINKIT ---
     const hinnatUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnibizIk4iKv52vSzCG-zOD_Ofb1i4_MO1JVeVpxpVfAcFIw-bgpOsNrzuFwk7SP4a6NNGngLqM2oS/pub?gid=1460133489&single=true&output=csv"; 
     const historiaUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnibizIk4iKv52vSzCG-zOD_Ofb1i4_MO1JVeVpxpVfAcFIw-bgpOsNrzuFwk7SP4a6NNGngLqM2oS/pub?gid=515629452&single=true&output=csv"; 
 
     let hinnastoData = [];
     let historiaData = [];
 
+    // TEEMAN VAIHTO
+    function toggleTheme() {
+        document.body.classList.toggle('light-theme');
+    }
+
+    // DATA HAKU
     async function lataaData() {
         try {
-            // Ladataan hinnat
-            const hRes = await fetch(hinnatUrl);
+            document.getElementById('status').innerText = "⏳ Ladataan dataa...";
+            
+            const [hRes, histRes] = await Promise.all([
+                fetch(hinnatUrl),
+                fetch(historiaUrl)
+            ]);
+
             const hCsv = await hRes.text();
             hinnastoData = hCsv.split(/\r?\n/).slice(1).map(r => {
                 const s = r.split(/[;,]/);
-                return { nimi: s[0], hinta: parseFloat(s[1]), kulu: parseFloat(s[2]), leveys: parseFloat(s[3]) };
-            });
+                return { 
+                    nimi: s[0]?.trim(), 
+                    hintaM: parseFloat(s[1]?.replace(',','.')), 
+                    kuluM: parseFloat(s[2]?.replace(',','.')), 
+                    leveys: parseFloat(s[3]?.replace(',','.')) 
+                };
+            }).filter(m => m.nimi && !isNaN(m.hintaM));
 
-            // Ladataan historia
-            const histRes = await fetch(historiaUrl);
             const histCsv = await histRes.text();
             historiaData = histCsv.split(/\r?\n/).slice(1).map(r => {
                 const s = r.split(/[;,]/);
-                return { materiaali: s[0], koko: parseFloat(s[1]), hinta: parseFloat(s[2]) };
-            });
+                return { 
+                    materiaali: s[0]?.trim(), 
+                    koko: parseFloat(s[1]?.replace(',','.')), 
+                    hinta: parseFloat(s[2]?.replace(',','.')) 
+                };
+            }).filter(h => !isNaN(h.koko));
 
             paivitaValikko();
-            document.getElementById('status').innerText = "✅ Hinnat ja historia käytössä";
+            document.getElementById('status').innerText = "✅ Valmis! (" + hinnastoData.length + " tuotetta)";
         } catch (e) {
-            document.getElementById('status').innerText = "⚠️ Virhe datan haussa";
+            document.getElementById('status').innerText = "⚠️ Virhe haussa. Tarkista linkit!";
         }
     }
 
     function paivitaValikko() {
         const sel = document.getElementById('matSelector');
+        sel.innerHTML = "";
         hinnastoData.forEach(m => {
-            if(m.nimi) {
-                let opt = document.createElement('option');
-                opt.text = m.nimi + " (" + m.leveys + "mm)";
-                sel.appendChild(opt);
-            }
+            let opt = document.createElement('option');
+            opt.text = m.nimi + " (" + m.leveys + "mm)";
+            sel.appendChild(opt);
         });
     }
 
+    // LASKENTA
     function laske() {
         const sqm = parseFloat(document.getElementById('sqm').value);
-        const mat = hinnastoData[document.getElementById('matSelector').selectedIndex];
-        if (!sqm || !mat) return;
-
-        // 1. Laske nykyhetken materiaalikulu (esim. 1.5€/m -> n. 12€/m2)
-        const menekkiM = 1000 / (mat.leveys + 5);
-        const nykyinenMatKuluM2 = menekkiM * mat.kulu;
-
-        // 2. Laske historiallinen toteutunut neliöhinta
-        const samatTyot = historiaData.filter(h => h.materiaali === mat.nimi || mat.nimi.includes(h.materiaali));
+        const selector = document.getElementById('matSelector');
+        if (!sqm || sqm <= 0 || hinnastoData.length === 0) return;
         
-        // Jos historiaa ei löydy, käytetään oletuksena 200€/m2 (perustuen aiempaan 15m2 = 3000€ kokemukseesi)
+        const mat = hinnastoData[selector.selectedIndex];
+
+        // 1. Materiaalikulu per m2
+        const menekkiM = 1000 / (mat.leveys + 5);
+        const nykyinenMatKuluM2 = menekkiM * mat.kuluM;
+
+        // 2. Historiasta oppiminen
+        const samatTyot = historiaData.filter(h => mat.nimi.toLowerCase().includes(h.materiaali.toLowerCase()));
         let historiallinenM2Hinta = 200; 
 
         if(samatTyot.length > 0) {
-            const summat = samatTyot.map(h => h.hinta / h.koko);
-            historiallinenM2Hinta = summat.reduce((a,b) => a+b) / summat.length;
+            const m2Hinnat = samatTyot.map(h => h.hinta / h.koko);
+            historiallinenM2Hinta = m2Hinnat.reduce((a,b) => a+b) / m2Hinnat.length;
         }
 
-        // 3. ÄLYKÄS ENNUSTE:
-        // Otetaan historian mukainen hinta ja säädetään sitä materiaalikulujen muutoksella.
-        // Lisätään 600€ aloitus ja lasketaan loput neliöperusteisesti.
-        const tyonOsuusM2 = historiallinenM2Hinta - 40; // Oletetaan että vanha mat-kulu oli n. 40€/m2
+        // 3. ENNUSTE
+        const tyonOsuusM2 = historiallinenM2Hinta - 40; 
         const ennuste = 600 + (sqm * (tyonOsuusM2 + nykyinenMatKuluM2)); 
-
-        document.getElementById('result').style.display = "block";
-        document.getElementById('outTotal').innerText = "Älykäs Ennuste: " + Math.round(ennuste).toLocaleString('fi-FI') + " €";
-        document.getElementById('outInfo').innerText = "Analyysi: Perustuu " + samatTyot.length + " aiempaan urakkaan.";
-        
         const kate = ennuste - (sqm * nykyinenMatKuluM2);
-        document.getElementById('outPrediction').innerHTML = "<strong>💡 Analyysi:</strong><br>" +
-            "Historiallinen taso: ~" + Math.round(historiallinenM2Hinta) + " €/m²<br>" +
-            "💰 Arvioitu kate (työ + voitto): " + Math.round(kate).toLocaleString('fi-FI') + " €";
-    }
-
-        // 3. Yhdistetään: (Nykyinen materiaalikulu) + (Historiallinen työn osuus)
-        // Lisätään vielä 600€ aloitusvarmistus
-        const ennuste = 600 + matKuluYhteensa + (sqm * (avgTyopalkkaM2 - 50)); 
 
         document.getElementById('result').style.display = "block";
-        document.getElementById('outTotal').innerText = "Ennuste: " + Math.round(ennuste).toLocaleString() + " €";
-        document.getElementById('outInfo').innerText = "Nykyinen puun hinta: " + mat.kulu + " €/m";
-        document.getElementById('outPrediction').innerHTML = "<strong>💡 Historiaan perustuva analyysi:</strong><br>" +
-            "Aiempi keskihinta tälle materiaalille: " + Math.round(avgTyopalkkaM2) + " €/m²<br>" +
-            "Suositeltu tarjous nykyisillä kuluilla.";
+        document.getElementById('outTotal').innerText = "Ennuste: " + Math.round(ennuste).toLocaleString('fi-FI') + " €";
+        document.getElementById('outInfo').innerText = "Perustuu historiaan ja puun nykyhintaan.";
+        
+        document.getElementById('outPrediction').innerHTML = "<strong>💡 Analyysi:</strong><br>" +
+            "Historiallinen m²-taso: ~" + Math.round(historiallinenM2Hinta) + " €/m²<br>" +
+            "💰 Arvioitu kate (työ + voitto): " + Math.round(kate).toLocaleString('fi-FI') + " €";
     }
 
     lataaData();
 </script>
 </body>
 </html>
-
