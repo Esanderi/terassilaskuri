@@ -2,83 +2,99 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Terassi-Master Pro</title>
+    <title>Terassilaskuri Live</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
         .container { max-width: 500px; width: 100%; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         .input-group { margin-bottom: 15px; }
-        label { display: block; font-weight: 600; margin-bottom: 5px; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; width: 100%; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; }
-        .result-card { margin-top: 20px; padding: 20px; background: #e8f5e9; border-radius: 10px; border-left: 6px solid #27ae60; }
-        .profit-box { margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 8px; border: 1px dashed #ff9800; font-size: 0.9em; }
-        .history-text { font-size: 0.85em; color: #666; margin-top: 10px; font-style: italic; }
+        input, select, button { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+        button { background: #27ae60; color: white; border: none; font-size: 18px; cursor: pointer; font-weight: bold; }
+        .result-card { margin-top: 20px; padding: 20px; background: #e8f5e9; border-radius: 10px; border-left: 6px solid #27ae60; display:none; }
+        .profit-box { margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 8px; border: 1px dashed #ff9800; }
+        .status { font-size: 0.8em; margin-bottom: 10px; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🛠 Terassilaskuri + Kate</h2>
+    <h2>🛠 Terassilaskuri Live</h2>
+    <div id="status" class="status">Yhdistetään Sheetsiin...</div>
     
     <div class="input-group">
-        <label>Terassin koko (m²):</label>
+        <label>Koko (m²):</label>
         <input type="number" id="sqm" placeholder="Esim. 25" oninput="laske()">
     </div>
 
     <div class="input-group">
         <label>Materiaali:</label>
-        <select id="mat" onchange="laske()">
-            <option value="Kestopuu" data-price="160" data-cost="60">Kestopuu</option>
-            <option value="Lehtikuusi" data-price="240" data-cost="110">Lehtikuusi</option>
-            <option value="Komposiitti" data-price="350" data-cost="180">Komposiitti</option>
-        </select>
+        <select id="matSelector" onchange="laske()"></select>
     </div>
 
     <button onclick="laske()">Laske Tarjous</button>
 
-    <div id="result" class="result-card" style="display:none;">
-        <h3 id="outTotal" style="margin:0;"></h3>
-        <p id="outUnit" style="color: #444;"></p>
-        
-        <div class="profit-box">
-            <strong>Yrittäjän näkymä (Kate-arvio):</strong><br>
-            <span id="outProfit"></span><br>
-            <span id="outWork"></span>
-        </div>
-        
-        <p id="historyMatch" class="history-text"></p>
+    <div id="result" class="result-card">
+        <h3 id="outTotal"></h3>
+        <div class="profit-box" id="outProfit"></div>
     </div>
 </div>
 
 <script>
+    // VAIHDA TÄHÄN OMA GOOGLE SHEETS CSV-LINKKISI
+    const sheetsUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnibizIk4iKv52vSzCG-zOD_Ofb1i4_MO1JVeVpxpVfAcFIw-bgpOsNrzuFwk7SP4a6NNGngLqM2oS/pub?output=csv"; 
+
+    let hinnastoData = [];
+
     function laske() {
         const sqm = parseFloat(document.getElementById('sqm').value);
-        const select = document.getElementById('mat');
-        const option = select.options[select.selectedIndex];
+        const selector = document.getElementById('matSelector');
+        if (!selector || selector.options.length === 0) return;
         
-        const myyntihinta = parseFloat(option.getAttribute('data-price'));
-        const materiaalikulu = parseFloat(option.getAttribute('data-cost'));
+        const valittuNimi = selector.value;
+        const mat = hinnastoData.find(m => m.nimi === valittuNimi);
 
-        if (!sqm || sqm <= 0) return;
+        if (!sqm || !mat) return;
 
-        // Laskenta
-        const kokonaishinta = sqm * myyntihinta;
-        const kulut = sqm * materiaalikulu;
-        const kate = kokonaishinta - kulut;
-        
-        // Arvioitu työaika (esim. 1.5h per m2)
+        const aloituskulu = 600; 
+        const yhteensa = aloituskulu + (sqm * mat.hinta);
+        const kulut = sqm * mat.kulu;
+        const kate = yhteensa - kulut;
         const tunnit = Math.round(sqm * 1.5);
 
         document.getElementById('result').style.display = "block";
-        document.getElementById('outTotal').innerText = "Tarjous: " + Math.round(kokonaishinta).toLocaleString() + " €";
-        document.getElementById('outUnit').innerText = "Hinta asiakkaalle: " + myyntihinta + " €/m²";
-        
-        document.getElementById('outProfit').innerText = "💰 Kate (työpalkka + kate): " + Math.round(kate).toLocaleString() + " €";
-        document.getElementById('outWork').innerText = "⏳ Arvioitu työaika: n. " + tunnit + " h";
-        
-        document.getElementById('historyMatch').innerText = "Vertailu: Perustuu aiempaan " + select.value + "-hinnastoon.";
+        document.getElementById('outTotal').innerText = "Tarjous: " + Math.round(yhteensa).toLocaleString() + " €";
+        document.getElementById('outProfit').innerHTML = "<strong>Yrittäjän näkymä:</strong><br>💰 Kate: " + Math.round(kate).toLocaleString() + " €<br>⏳ Työaika: n. " + tunnit + " h";
     }
-</script>
 
+    async function lataaSheetsista() {
+        try {
+            const response = await fetch(sheetsUrl);
+            const rawData = await response.text();
+            const rivit = rawData.split("\n").slice(1); 
+            const selector = document.getElementById('matSelector');
+            
+            selector.innerHTML = ""; 
+            hinnastoData = []; 
+
+            rivit.forEach(rivi => {
+                const sarakkeet = rivi.split(",");
+                if(sarakkeet.length >= 3) {
+                    const nimi = sarakkeet[0].trim();
+                    const hinta = parseFloat(sarakkeet[1]);
+                    const kulu = parseFloat(sarakkeet[2]);
+                    hinnastoData.push({ nimi, hinta, kulu });
+                    let opt = document.createElement('option');
+                    opt.value = nimi;
+                    opt.text = nimi;
+                    selector.appendChild(opt);
+                }
+            });
+            document.getElementById('status').innerText = "✅ Hinnat haettu Sheetsistä";
+        } catch (e) {
+            document.getElementById('status').innerText = "⚠️ Virhe haussa. Tarkista linkki.";
+        }
+    }
+
+    lataaSheetsista();
+</script>
 </body>
 </html>
