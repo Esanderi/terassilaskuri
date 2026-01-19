@@ -2,88 +2,82 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Terassilaskuri Cloud</title>
+    <title>Terassi-Master Pro</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f8f9fa; padding: 20px; }
-        .container { max-width: 500px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .status { font-size: 0.8em; color: green; margin-bottom: 10px; }
-        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
-        button { background: #2ecc71; color: white; border: none; font-weight: bold; cursor: pointer; }
-        .result-box { background: #f1f8e9; padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 500px; width: 100%; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-weight: 600; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; width: 100%; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; }
+        .result-card { margin-top: 20px; padding: 20px; background: #e8f5e9; border-radius: 10px; border-left: 6px solid #27ae60; }
+        .profit-box { margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 8px; border: 1px dashed #ff9800; font-size: 0.9em; }
+        .history-text { font-size: 0.85em; color: #666; margin-top: 10px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📊 Terassilaskuri (Sheets-yhteys)</h2>
-    <div id="status" class="status">Päivitetään hinnastoja Sheetsistä...</div>
+    <h2>🛠 Terassilaskuri + Kate</h2>
+    
+    <div class="input-group">
+        <label>Terassin koko (m²):</label>
+        <input type="number" id="sqm" placeholder="Esim. 25" oninput="laske()">
+    </div>
 
-    <label>Koko (m²):</label>
-    <input type="number" id="sqm" placeholder="Esim. 25">
+    <div class="input-group">
+        <label>Materiaali:</label>
+        <select id="mat" onchange="laske()">
+            <option value="Kestopuu" data-price="160" data-cost="60">Kestopuu</option>
+            <option value="Lehtikuusi" data-price="240" data-cost="110">Lehtikuusi</option>
+            <option value="Komposiitti" data-price="350" data-cost="180">Komposiitti</option>
+        </select>
+    </div>
 
-    <label>Materiaali:</label>
-    <select id="materialSelector"></select>
+    <button onclick="laske()">Laske Tarjous</button>
 
-    <button onclick="laskeArvio()">Laske hinta-arvio</button>
-
-    <div id="result" class="result-box">
-        <h3 id="priceOut"></h3>
-        <p id="historyOut"></p>
+    <div id="result" class="result-card" style="display:none;">
+        <h3 id="outTotal" style="margin:0;"></h3>
+        <p id="outUnit" style="color: #444;"></p>
+        
+        <div class="profit-box">
+            <strong>Yrittäjän näkymä (Kate-arvio):</strong><br>
+            <span id="outProfit"></span><br>
+            <span id="outWork"></span>
+        </div>
+        
+        <p id="historyMatch" class="history-text"></p>
     </div>
 </div>
 
 <script>
-    // VAIHDA TÄHÄN OMA GOOGLE SHEETS JULKAISULINKKISI (CSV-muoto)
-    const sheetsUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnibizIk4iKv52vSzCG-zOD_Ofb1i4_MO1JVeVpxpVfAcFIw-bgpOsNrzuFwk7SP4a6NNGngLqM2oS/pub?output=csv";
-
-    let hinnasto = {};
-    let historia = [];
-
-    // Haetaan tiedot Sheetsistä heti kun sivu latautuu
-    async function lataaTiedot() {
-        try {
-            const response = await fetch(sheetsUrl);
-            const data = await response.text();
-            
-            // Tässä on yksinkertainen CSV-lukija (olettaen että Sheetsissä on tietyt sarakkeet)
-            const rivit = data.split('\n');
-            
-            // Esimerkki datan lukemisesta (vaatii että Sheets on juuri oikeassa muodossa)
-            // Huom: Tämä on yksinkertaistettu demo. Oikeassa sovelluksessa lukija on tarkempi.
-            
-            document.getElementById('status').innerText = "● Hinnat haettu Sheetsistä";
-            
-            // Täytetään valikko (esimerkkiarvoilla jos haku epäonnistuu lokaalisti)
-            paivitaValikko(["Kestopuu", "Lehtikuusi", "Komposiitti"]);
-        } catch (e) {
-            document.getElementById('status').innerText = "Käytetään välimuistissa olevia hintoja.";
-        }
-    }
-
-    function paivitaValikko(materiaalit) {
-        const sel = document.getElementById('materialSelector');
-        materiaalit.forEach(m => {
-            let opt = document.createElement('option');
-            opt.value = m;
-            opt.innerHTML = m;
-            sel.appendChild(opt);
-        });
-    }
-
-    function laskeArvio() {
-        const sqm = document.getElementById('sqm').value;
-        const mat = document.getElementById('materialSelector').value;
+    function laske() {
+        const sqm = parseFloat(document.getElementById('sqm').value);
+        const select = document.getElementById('mat');
+        const option = select.options[select.selectedIndex];
         
-        // Tähän tulee laskentalogiikka, joka käyttää Sheetsistä haettuja lukuja
-        let perushinta = (mat === "Kestopuu") ? 160 : 250; 
-        let yhteensa = sqm * perushinta;
+        const myyntihinta = parseFloat(option.getAttribute('data-price'));
+        const materiaalikulu = parseFloat(option.getAttribute('data-cost'));
+
+        if (!sqm || sqm <= 0) return;
+
+        // Laskenta
+        const kokonaishinta = sqm * myyntihinta;
+        const kulut = sqm * materiaalikulu;
+        const kate = kokonaishinta - kulut;
+        
+        // Arvioitu työaika (esim. 1.5h per m2)
+        const tunnit = Math.round(sqm * 1.5);
 
         document.getElementById('result').style.display = "block";
-        document.getElementById('priceOut').innerText = "Arvio: " + yhteensa.toLocaleString() + " €";
-        document.getElementById('historyOut').innerText = "Perustuu Sheets-hinnastoosi (" + perushinta + " €/m²).";
+        document.getElementById('outTotal').innerText = "Tarjous: " + Math.round(kokonaishinta).toLocaleString() + " €";
+        document.getElementById('outUnit').innerText = "Hinta asiakkaalle: " + myyntihinta + " €/m²";
+        
+        document.getElementById('outProfit').innerText = "💰 Kate (työpalkka + kate): " + Math.round(kate).toLocaleString() + " €";
+        document.getElementById('outWork').innerText = "⏳ Arvioitu työaika: n. " + tunnit + " h";
+        
+        document.getElementById('historyMatch').innerText = "Vertailu: Perustuu aiempaan " + select.value + "-hinnastoon.";
     }
-
-    lataaTiedot();
 </script>
 
 </body>
