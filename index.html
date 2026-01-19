@@ -87,42 +87,57 @@
     }
 
     // 3. DATAN HAKU SHEETSISTÄ
+   // 3. DATAN HAKU SHEETSISTÄ (Fiksumpi versio)
     async function lataaSheetsista() {
         try {
             const response = await fetch(sheetsUrl);
             const csvText = await response.text();
-            const rivit = csvText.split("\n").slice(1); 
+            // Pilkotaan rivit oikein, riippumatta siitä onko rivinvaihto \n vai \r\n
+            const rivit = csvText.split(/\r?\n/).slice(1); 
             
             const selector = document.getElementById('matSelector');
             selector.innerHTML = ""; 
             hinnastoData = []; 
 
             rivit.forEach(rivi => {
-                // Käsitellään sekä pilkku- että puolipistevälitteiset tiedostot
-                const s = rivi.includes(';') ? rivi.split(';') : rivi.split(',');
+                // TÄRKEÄÄ: Erotetaan sarakkeet, olipa välissä pilkku tai puolipiste
+                const s = rivi.split(/[;,]/);
                 
                 if(s.length >= 4) {
                     const nimi = s[0].trim();
-                    const hinta = parseFloat(s[1].replace(',', '.'));
-                    const kulu = parseFloat(s[2].replace(',', '.'));
-                    const leveys = parseFloat(s[3].replace(',', '.'));
+                    
+                    // Puhdistetaan numerot (poistetaan välilyönnit ja muutetaan pilkut pisteiksi)
+                    const puhdista = (teksti) => {
+                        if (!teksti) return 0;
+                        return parseFloat(teksti.replace(/[^0-9,.]/g, '').replace(',', '.'));
+                    };
 
-                    if(!isNaN(hinta) && !isNaN(leveys)) {
+                    const hinta = puhdista(s[1]);
+                    const kulu = puhdista(s[2]);
+                    const leveys = puhdista(s[3]);
+
+                    if(!isNaN(hinta) && hinta > 0) {
                         hinnastoData.push({ nimi, myyntiM: hinta, kuluM: kulu, leveys: leveys });
                         let opt = document.createElement('option');
+                        opt.value = nimi;
                         opt.text = nimi + " (" + leveys + "mm)";
                         selector.appendChild(opt);
                     }
                 }
             });
-            document.getElementById('status').innerText = "✅ Hinnat ja leveydet haettu Sheetsistä";
+            
+            if (hinnastoData.length > 0) {
+                document.getElementById('status').innerText = "✅ Hinnasto ladattu (" + hinnastoData.length + " tuotetta)";
+            } else {
+                document.getElementById('status').innerText = "⚠️ Sheets ladattiin, mutta tietoja ei löytynyt. Tarkista sarakkeet!";
+            }
         } catch (e) {
-            document.getElementById('status').innerText = "⚠️ Virhe haussa. Tarkista linkki!";
+            document.getElementById('status').innerText = "⚠️ Yhteysvirhe! Tarkista internet ja Sheets-linkki.";
         }
     }
-
     lataaSheetsista();
 </script>
 
 </body>
 </html>
+
