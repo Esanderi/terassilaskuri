@@ -2,114 +2,119 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Terassilaskuri Pro (m)</title>
+    <title>AI-Terassilaskuri Pro</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 500px; width: 100%; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .container { max-width: 550px; width: 100%; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         .input-group { margin-bottom: 15px; }
         label { display: block; font-weight: 600; margin-bottom: 5px; }
         input, select, button { width: 100%; padding: 12px; margin-top: 5px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
         button { background: #27ae60; color: white; border: none; font-size: 18px; cursor: pointer; font-weight: bold; }
         .result-card { margin-top: 20px; padding: 20px; background: #e8f5e9; border-radius: 10px; border-left: 6px solid #27ae60; display:none; }
-        .profit-box { margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 8px; border: 1px dashed #ff9800; }
+        .prediction-box { margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 8px; border: 1px solid #2196f3; font-size: 0.9em; }
         .status { font-size: 0.8em; margin-bottom: 10px; color: #666; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>🛠 Terassilaskuri Pro</h2>
-    <div id="status" class="status">Yhdistetään Sheetsiin...</div>
+    <h2>🛠 Ennustava Terassilaskuri</h2>
+    <div id="status" class="status">Yhdistetään tietokantoihin...</div>
     
     <div class="input-group">
-        <label>Terassin koko (m²):</label>
-        <input type="number" id="sqm" placeholder="Esim. 15" oninput="laske()">
+        <label>Uuden terassin koko (m²):</label>
+        <input type="number" id="sqm" placeholder="Esim. 20" oninput="laske()">
     </div>
 
     <div class="input-group">
-        <label>Valitse materiaali/leveys:</label>
+        <label>Valitse materiaali:</label>
         <select id="matSelector" onchange="laske()"></select>
     </div>
 
-    <button onclick="laske()">Laske Tarjous</button>
+    <button onclick="laske()">Laske Älykäs Ennuste</button>
 
     <div id="result" class="result-card">
         <h3 id="outTotal"></h3>
         <p id="outInfo"></p>
-        <div class="profit-box" id="outProfit"></div>
+        <div class="prediction-box" id="outPrediction"></div>
     </div>
 </div>
 
 <script>
-    // VAIHDA TÄHÄN OMA GOOGLE SHEETS CSV-LINKKISI
-    const sheetsUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnibiziK4ikV5zszCG-zOD_Ofb1i4_MO1JVeVpxpVfAcFIw-bgpOsNrzuFwk7SP4a6NNGngLqM2oS/pub?output=csv"; 
+    const hinnatUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnibizIk4iKv52vSzCG-zOD_Ofb1i4_MO1JVeVpxpVfAcFIw-bgpOsNrzuFwk7SP4a6NNGngLqM2oS/pub?gid=1460133489&single=true&output=csv"; 
+    const historiaUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnibizIk4iKv52vSzCG-zOD_Ofb1i4_MO1JVeVpxpVfAcFIw-bgpOsNrzuFwk7SP4a6NNGngLqM2oS/pub?gid=515629452&single=true&output=csv"; 
 
     let hinnastoData = [];
+    let historiaData = [];
 
-    function laske() {
-        const sqm = parseFloat(document.getElementById('sqm').value);
-        const selector = document.getElementById('matSelector');
-        if (!sqm || sqm <= 0 || hinnastoData.length === 0) return;
-        
-        const mat = hinnastoData[selector.selectedIndex];
-
-        // LASKENTA: Metri -> Neliö (sis. 5mm rako)
-        // Kaava: 1000 / (leveys + 5) = kuinka monta metriä lautaa menee neliöön
-        const menekkiPerM2 = 1000 / (mat.leveys + 5); 
-        
-        // Lasketaan neliöhinnat metrihintojen perusteella
-        const myyntiNeliohinta = mat.myyntiM * menekkiPerM2;
-        const kuluNeliohinta = mat.kuluM * menekkiPerM2;
-
-        const aloituskulu = 600; 
-        const kokonaishinta = aloituskulu + (sqm * myyntiNeliohinta);
-        const kokonaiskulut = sqm * kuluNeliohinta;
-        const kate = kokonaishinta - kokonaiskulut;
-        
-        const kokonaisMetrit = Math.round(sqm * menekkiPerM2);
-
-        document.getElementById('result').style.display = "block";
-        document.getElementById('outTotal').innerText = "Tarjous: " + Math.round(kokonaishinta).toLocaleString('fi-FI') + " €";
-        document.getElementById('outInfo').innerText = "Menekki: n. " + kokonaisMetrit + " m (" + mat.leveys + " mm lauta)";
-        
-        document.getElementById('outProfit').innerHTML = "<strong>Yrittäjän näkymä:</strong><br>" + 
-            "💰 Kate: " + Math.round(kate).toLocaleString('fi-FI') + " €<br>" +
-            "📏 Menekki: " + Math.round(menekkiPerM2 * 10) / 10 + " m / m²";
-    }
-
-    async function lataaSheetsista() {
+    async function lataaData() {
         try {
-            const response = await fetch(sheetsUrl);
-            const csvText = await response.text();
-            const rivit = csvText.split(/\r?\n/).slice(1); 
-            
-            const selector = document.getElementById('matSelector');
-            selector.innerHTML = ""; 
-            hinnastoData = []; 
-
-            rivit.forEach(rivi => {
-                const s = rivi.split(/[;,]/);
-                if(s.length >= 4) {
-                    const nimi = s[0].trim();
-                    const hinta = parseFloat(s[1].replace(',', '.'));
-                    const kulu = parseFloat(s[2].replace(',', '.'));
-                    const leveys = parseFloat(s[3].replace(',', '.'));
-
-                    if(!isNaN(hinta) && hinta > 0) {
-                        hinnastoData.push({ nimi, myyntiM: hinta, kuluM: kulu, leveys: leveys });
-                        let opt = document.createElement('option');
-                        opt.text = nimi + " (" + leveys + "mm)";
-                        selector.appendChild(opt);
-                    }
-                }
+            // Ladataan hinnat
+            const hRes = await fetch(hinnatUrl);
+            const hCsv = await hRes.text();
+            hinnastoData = hCsv.split(/\r?\n/).slice(1).map(r => {
+                const s = r.split(/[;,]/);
+                return { nimi: s[0], hinta: parseFloat(s[1]), kulu: parseFloat(s[2]), leveys: parseFloat(s[3]) };
             });
-            document.getElementById('status').innerText = "✅ Hinnasto ladattu (" + hinnastoData.length + " tuotetta)";
+
+            // Ladataan historia
+            const histRes = await fetch(historiaUrl);
+            const histCsv = await histRes.text();
+            historiaData = histCsv.split(/\r?\n/).slice(1).map(r => {
+                const s = r.split(/[;,]/);
+                return { materiaali: s[0], koko: parseFloat(s[1]), hinta: parseFloat(s[2]) };
+            });
+
+            paivitaValikko();
+            document.getElementById('status').innerText = "✅ Hinnat ja historia käytössä";
         } catch (e) {
-            document.getElementById('status').innerText = "⚠️ Virhe haussa. Tarkista linkki!";
+            document.getElementById('status').innerText = "⚠️ Virhe datan haussa";
         }
     }
 
-    lataaSheetsista();
+    function paivitaValikko() {
+        const sel = document.getElementById('matSelector');
+        hinnastoData.forEach(m => {
+            if(m.nimi) {
+                let opt = document.createElement('option');
+                opt.text = m.nimi + " (" + m.leveys + "mm)";
+                sel.appendChild(opt);
+            }
+        });
+    }
+
+    function laske() {
+        const sqm = parseFloat(document.getElementById('sqm').value);
+        const mat = hinnastoData[document.getElementById('matSelector').selectedIndex];
+        if (!sqm || !mat) return;
+
+        // 1. Laske nykyhetken materiaalikulu
+        const menekkiM = 1000 / (mat.leveys + 5);
+        const matKuluYhteensa = sqm * menekkiM * mat.kulu;
+
+        // 2. Laske historiallinen keskihinta (työ + kate)
+        // Etsitään historiasta samat materiaalit
+        const samatTyot = historiaData.filter(h => h.materiaali === mat.nimi);
+        let avgTyopalkkaM2 = 120; // Oletus jos historiaa ei ole
+
+        if(samatTyot.length > 0) {
+            const summat = samatTyot.map(h => h.hinta / h.koko);
+            avgTyopalkkaM2 = summat.reduce((a,b) => a+b) / summat.length;
+        }
+
+        // 3. Yhdistetään: (Nykyinen materiaalikulu) + (Historiallinen työn osuus)
+        // Lisätään vielä 600€ aloitusvarmistus
+        const ennuste = 600 + matKuluYhteensa + (sqm * (avgTyopalkkaM2 - 50)); 
+
+        document.getElementById('result').style.display = "block";
+        document.getElementById('outTotal').innerText = "Ennuste: " + Math.round(ennuste).toLocaleString() + " €";
+        document.getElementById('outInfo').innerText = "Nykyinen puun hinta: " + mat.kulu + " €/m";
+        document.getElementById('outPrediction').innerHTML = "<strong>💡 Historiaan perustuva analyysi:</strong><br>" +
+            "Aiempi keskihinta tälle materiaalille: " + Math.round(avgTyopalkkaM2) + " €/m²<br>" +
+            "Suositeltu tarjous nykyisillä kuluilla.";
+    }
+
+    lataaData();
 </script>
 </body>
 </html>
