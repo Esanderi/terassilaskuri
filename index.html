@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
     <meta charset="UTF-8">
-    <title>Terassilaskuri Master - Metriperusteinen</title>
+    <title>Terassilaskuri Pro</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
         .container { max-width: 500px; width: 100%; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
@@ -17,16 +17,16 @@
 <body>
 
 <div class="container">
-    <h2>🛠 Terassilaskuri Pro (m)</h2>
+    <h2>🛠 Terassilaskuri Live</h2>
     <div id="status" class="status">Yhdistetään Sheetsiin...</div>
     
     <div class="input-group">
-        <label>Terassin koko (m²):</label>
+        <label>Koko (m²):</label>
         <input type="number" id="sqm" placeholder="Esim. 25" oninput="laske()">
     </div>
 
     <div class="input-group">
-        <label>Valitse materiaali/leveys:</label>
+        <label>Materiaali ja leveys:</label>
         <select id="matSelector" onchange="laske()"></select>
     </div>
 
@@ -34,7 +34,7 @@
 
     <div id="result" class="result-card">
         <h3 id="outTotal"></h3>
-        <div id="outInfo" style="font-size: 0.9em; margin-bottom: 10px;"></div>
+        <div id="outInfo" style="margin-bottom: 10px; font-size: 0.9em;"></div>
         <div class="profit-box" id="outProfit"></div>
     </div>
 </div>
@@ -48,66 +48,56 @@
     function laske() {
         const sqm = parseFloat(document.getElementById('sqm').value);
         const selector = document.getElementById('matSelector');
-        if (!selector || selector.options.length === 0) return;
+        if (!selector || selector.options.length === 0 || !sqm) return;
         
-        const valittuNimi = selector.value;
-        const mat = hinnastoData.find(m => m.nimi === valittuNimi);
+        const mat = hinnastoData[selector.selectedIndex];
 
-        if (!sqm || !mat) return;
-
-        // LASKENTA: Metri -> Neliö (huomioiden 5mm rako)
-        // Kaava: 1000mm / (laudan leveys + 5mm rako) = juoksumetrit per neliö
+        // Laskenta: (1000mm / (leveys + 5mm rako)) = metrit per neliö
         const menekkiPerM2 = 1000 / (mat.leveys + 5); 
-        
         const myyntiNeliohinta = mat.hinta * menekkiPerM2;
         const kuluNeliohinta = mat.kulu * menekkiPerM2;
 
         const aloituskulu = 600; 
         const yhteensa = aloituskulu + (sqm * myyntiNeliohinta);
-        const kokonaiskulut = sqm * kuluNeliohinta;
-        const kate = yhteensa - kokonaiskulut;
-        
+        const kate = yhteensa - (sqm * kuluNeliohinta);
         const kokonaisMetrit = Math.round(sqm * menekkiPerM2);
 
         document.getElementById('result').style.display = "block";
         document.getElementById('outTotal').innerText = "Tarjous: " + Math.round(yhteensa).toLocaleString() + " €";
         document.getElementById('outInfo').innerText = "Menekki: n. " + kokonaisMetrit + " m (" + mat.leveys + " mm lauta)";
-        
-        document.getElementById('outProfit').innerHTML = "<strong>Yrittäjän näkymä:</strong><br>" + 
-            "💰 Kate: " + Math.round(kate).toLocaleString() + " €<br>" +
-            "📏 Menekki: " + Math.round(menekkiPerM2 * 10) / 10 + " m / m²";
+        document.getElementById('outProfit').innerHTML = "<strong>Yrittäjän näkymä:</strong><br>💰 Kate: " + Math.round(kate).toLocaleString() + " €<br>📏 " + Math.round(menekkiPerM2*10)/10 + " m/m²";
     }
 
     async function lataaSheetsista() {
         try {
             const response = await fetch(sheetsUrl);
             const rawData = await response.text();
+            // Kokeillaan erotella sekä pilkulla että puolipisteellä
             const rivit = rawData.split("\n").slice(1); 
-            const selector = document.getElementById('matSelector');
             
+            const selector = document.getElementById('matSelector');
             selector.innerHTML = ""; 
             hinnastoData = []; 
 
             rivit.forEach(rivi => {
-                const sarakkeet = rivi.split(",");
-                // Nyt vaaditaan 4 saraketta (Nimi, Myyntihinta/m, Kulu/m, Leveys)
-                if(sarakkeet.length >= 4) {
-                    const nimi = sarakkeet[0].trim();
-                    const hinta = parseFloat(sarakkeet[1]);
-                    const kulu = parseFloat(sarakkeet[2]);
-                    const leveys = parseFloat(sarakkeet[3]);
+                const s = rivi.includes(';') ? rivi.split(';') : rivi.split(',');
+                if(s.length >= 4) {
+                    const nimi = s[0].trim();
+                    const hinta = parseFloat(s[1].replace(',', '.'));
+                    const kulu = parseFloat(s[2].replace(',', '.'));
+                    const leveys = parseFloat(s[3].replace(',', '.'));
 
-                    hinnastoData.push({ nimi, hinta, kulu, leveys });
-
-                    let opt = document.createElement('option');
-                    opt.value = nimi;
-                    opt.text = nimi + " (" + leveys + "mm)";
-                    selector.appendChild(opt);
+                    if(!isNaN(hinta)) {
+                        hinnastoData.push({ nimi, hinta, kulu, leveys });
+                        let opt = document.createElement('option');
+                        opt.text = nimi + " (" + leveys + "mm)";
+                        selector.appendChild(opt);
+                    }
                 }
             });
             document.getElementById('status').innerText = "✅ Hinnat ja leveydet haettu";
         } catch (e) {
-            document.getElementById('status').innerText = "⚠️ Virhe haussa. Tarkista Sheets ja linkki.";
+            document.getElementById('status').innerText = "⚠️ Virhe haussa.";
         }
     }
 
@@ -115,4 +105,3 @@
 </script>
 </body>
 </html>
-
